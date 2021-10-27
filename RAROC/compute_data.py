@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from scipy.optimize import fsolve
 
 class Data:
 
@@ -34,10 +35,7 @@ class Data:
         # risk management
         EAD = self.montant - GDR
         PD = rating_df[rating_df.PD == self.note][self.duree].values[0]
-        print(f"PD: {PD}")
-        print(f"EAD: {EAD}")
         LGD = type_df[type_df.Type == self.Type]["LGD"].values[0]
-        print(f"LGD: {LGD}")
         rating_pays = country_df[country_df.Pays == self.pays]["Rating"].values[0]
         PD_pays = rating_df[rating_df.PD == rating_pays][self.duree].values[0]
         LGD_pays = country_df[country_df.Pays == self.pays]["LGD"].values[0]
@@ -46,9 +44,6 @@ class Data:
             EAD_transfert = country_df[country_df.Pays == self.pays]["Taux_transfert"].values[0] * EAD
         else:
             EAD_transfert = 0
-        print(f"PD Pays: {PD_pays}")
-        print(f"EAD Pays: {EAD_transfert}")
-        print(f"LGD Pays: {LGD_pays}")
 
         EL = (EAD - EAD_transfert)*PD*LGD + EAD_transfert*PD_pays*LGD_pays
         UL = (EAD - EAD_transfert)*LGD*self.fi*self.beta*np.sqrt(self.corr*PD*(1-PD))+EAD_transfert*LGD_pays*self.fi*self.beta*np.sqrt(self.corr*PD_pays*(1-PD_pays))
@@ -65,6 +60,9 @@ class Data:
             "Valeurs": [EAD, f"{PD*100}%", f"{LGD*100}%", EAD_transfert, f"{PD_pays*100}%", f"{LGD_pays*100}%", EL, f"{UL:.2f}", "-", f"{self.RAROC*100:.2f}%"]
         })
 
+        if self.RAROC <= 0:
+            print("Attention, RAROC négatif avec ces réglages !")
+
         return self.RAROC, PNB
 
 
@@ -73,9 +71,18 @@ class Data:
         self.couts_SB = 0.3 * self.PNB_SB
 
         self.RAROC_SB = (self.PNB_SB - self.couts_SB + self.PNB - self.couts - self.EL) / self.UL + self.TSR 
+        self.part_SB = part_SB
+
+        if self.RAROC_SB <= 0:
+            print("Attention, RAROC Side Business négatif avec ces réglages !")
 
         return self.RAROC_SB
 
+    def compute_price(self, wanted_RAROC):
+        func = lambda wanted_price : wanted_RAROC - (((0.7*(self.part_SB/(1-self.part_SB))+ 0.7)*self.montant * wanted_price - self.EL) / self.UL + self.TSR)
+        price_initial_guess = 0.5
+        price_solution = fsolve(func, price_initial_guess)
+        print(f"Le prix est de {price_solution[0]*100:.4f}% pour un RAROC Side Business de {wanted_RAROC*100}% ") 
 
     def summary(self):
         return pd.DataFrame({
