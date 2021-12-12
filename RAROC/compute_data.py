@@ -4,6 +4,7 @@ from scipy.optimize import fsolve
 
 class Data:
 
+    # init function
     def __init__(self, montant, duree, note, Type, type_garantie, decote, nominal, pays, prix, corr, fi, beta, TSR):
         self.montant = montant
         self.duree = duree
@@ -26,6 +27,7 @@ class Data:
         "Données": ["Montant", "Durée", "Note", "Type", "Garantie", "Décôte", "Nominal", "Pays", "Prix"],
         "Valeurs": [self.montant, self.duree, self.note, self.Type, self.type_garantie, f"{self.decote*100}%", self.nominal, self.pays, f"{self.prix*100}%"]})
 
+    # useful function in order to compute RAROC
     def compute_raroc(self, rating_df, type_df, country_df):
         # contrôle de gestion
         PNB = self.montant * self.prix
@@ -64,8 +66,7 @@ class Data:
             print("Attention, RAROC négatif avec ces réglages !")
 
         return self.RAROC, PNB
-
-
+        
     def compute_SB(self, part_SB):
         self.PNB_SB = part_SB/(1-part_SB)*self.PNB
         self.couts_SB = 0.3 * self.PNB_SB
